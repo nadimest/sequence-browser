@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose the port the app runs on
-EXPOSE 8000
+EXPOSE 8080
 
 # Set environment variables
 ENV SUPABASE_URL=$SUPABASE_URL
@@ -26,4 +26,4 @@ ENV DB_HOST=$DB_HOST
 ENV DB_PORT=$DB_PORT
 
 # Command to run the application
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8080"]
