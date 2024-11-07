@@ -60,18 +60,18 @@ async def main_app():
     with open("templates/main_app.html") as f:
         return HTMLResponse(content=f.read())
 
-@app.get("/data/pdb_examples", response_class=PlainTextResponse)
-async def load_pdb(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    supabase.auth.session = {"access_token": token}
+# @app.get("/data/pdb_examples", response_class=PlainTextResponse)
+# async def load_pdb(credentials: HTTPAuthorizationCredentials = Depends(security)):
+#     token = credentials.credentials
+#     supabase.auth.session = {"access_token": token}
 
-    # Fetch the PDB file from Supabase storage
-    try:
-        pdb_content = supabase.storage.from_('pdb_files').download('2krh.pdb')
-    except Exception as e:
-        raise HTTPException(status_code=404, detail="PDB file not found")
+#     # Fetch the PDB file from Supabase storage
+#     try:
+#         pdb_content = supabase.storage.from_('pdb_files').download('2krh.pdb')  ## Hardcoded example
+#     except Exception as e:
+#         raise HTTPException(status_code=404, detail="PDB file not found")
 
-    return PlainTextResponse(content=pdb_content.decode('utf-8'))
+#     return PlainTextResponse(content=pdb_content.decode('utf-8'))
 
 @app.get("/data/pdb/{pdb_id}", response_class=PlainTextResponse)
 async def load_pdb(pdb_id: str, credentials: HTTPAuthorizationCredentials = Depends(security)):
@@ -82,6 +82,6 @@ async def load_pdb(pdb_id: str, credentials: HTTPAuthorizationCredentials = Depe
     try:
         pdb_content = supabase.storage.from_('pdb_files').download(f'{pdb_id}.pdb')
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"PDB file {pdb_id} not found")
+        raise HTTPException(status_code=404, detail=f"PDB file {pdb_id} not found in the database")
 
     return PlainTextResponse(content=pdb_content.decode('utf-8'))
