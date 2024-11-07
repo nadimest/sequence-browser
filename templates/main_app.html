@@ -6,21 +6,100 @@
     <link href="/static/css/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="https://molstar.org/viewer/molstar.css" />
     <title>Protein Viewer</title>
+    <style>
+        .viewer-container {
+            width: 800px;
+            height: 600px;
+            margin: 20px auto;
+            display: none;
+            position: relative; /* Important for containing absolutely positioned elements */
+        }
+        #viewer {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #ccc;
+            position: relative;
+            overflow: hidden;
+        }
+        /* Override Mol* fullscreen styles */
+        .msp-viewport {
+            position: relative !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .msp-layout-expanded {
+            position: relative !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .msp-layout-standard {
+            position: relative !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+    </style>
 </head>
-<body>
-    <div id="viewer"></div>
+<body class="p-4">
+    <div class="text-center mb-4">
+        <!-- Add input field for PDB ID -->
+        <input type="text" 
+               id="pdbId" 
+               placeholder="Enter PDB ID (e.g., 4hhb)"
+               class="border rounded px-2 py-1 mr-2"
+               value="4hhb">
+        
+        <button id="toggleViewer" 
+                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Show Protein Viewer
+        </button>
+    </div>
+
+    <div id="viewerContainer" class="viewer-container">
+        <div id="viewer"></div>
+    </div>
+
     <script type="text/javascript" src="/static/js/molstar.js"></script>
     <script type="text/javascript">
-        async function loadPdbData() {
-            const token = localStorage.getItem('token');
-            fetch('/data/pdb_examples', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
+        const toggleButton = document.getElementById('toggleViewer');
+        const viewerContainer = document.getElementById('viewerContainer');
+        const pdbInput = document.getElementById('pdbId');
+        let viewer = null;
+
+        toggleButton.addEventListener('click', async function() {
+            const isHidden = viewerContainer.style.display === 'none' || !viewerContainer.style.display;
+            
+            if (isHidden) {
+                // If showing, destroy existing viewer and create new one
+                if (viewer) {
+                    viewer.dispose();
+                    viewer = null;
                 }
-            })
-            .then(response => response.text())
-            .then(data => {
-                molstar.Viewer.create('viewer', {
+                viewerContainer.style.display = 'block';
+                toggleButton.textContent = 'Hide Protein Viewer';
+                await loadPdbData(pdbInput.value);
+            } else {
+                // If hiding, just hide the container
+                viewerContainer.style.display = 'none';
+                toggleButton.textContent = 'Show Protein Viewer';
+            }
+        });
+
+        async function loadPdbData(pdbId) {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`/data/pdb/${pdbId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.text();
+                
+                viewer = await molstar.Viewer.create('viewer', {
                     layoutIsExpanded: false,
                     layoutShowControls: false,
                     layoutShowRemoteState: false,
@@ -30,13 +109,35 @@
                     viewportShowExpand: false,
                     viewportShowSelectionMode: false,
                     viewportShowAnimation: false,
-                }).then(function(viewer) {
-                    viewer.loadStructureFromData(data, 'pdb');
+                    plugin: {
+                        customParameters: {
+                            disableModelServer: true
+                        },
+                        config: {
+                            structure: {
+                                modelServer: { 
+                                    disabled: true 
+                                }
+                            },
+                            layout: {
+                                isExpanded: false
+                            }
+                        }
+                    }
                 });
-            });
-        }
 
-        loadPdbData();
+                await viewer.loadStructureFromData(data, 'pdb', {
+                    format: 'pdb',
+                    modelServer: { 
+                        disabled: true 
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error loading PDB data:', error);
+                alert('Error loading protein structure. Please check the PDB ID.');
+            }
+        }
     </script>
 </body>
 </html>
