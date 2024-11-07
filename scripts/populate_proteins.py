@@ -1,7 +1,7 @@
 import os
 import psycopg2
 from pathlib import Path
-from src.config import DB_CONFIG, DATA_DIR  # Import configuration
+from src.config import DB_CONFIG, DATA_DIR  # Update the import path
 
 def parse_protein_file(file_path):
     """Parse a protein text file into a dictionary of sections."""
