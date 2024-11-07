@@ -1,6 +1,6 @@
 # Sequence Browser
 
-## [Live Demo](#)
+## [Live Demo](https://sequence-browser-22858869209.us-central1.run.app)
 
 ## Description
 This is an application to browse genes and proteins. It provides a user-friendly browser including 3D visualization of the structure and some curated reference information.
