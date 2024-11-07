@@ -60,3 +60,30 @@ async def load_pdb(protein_id: str, credentials: HTTPAuthorizationCredentials = 
         raise HTTPException(status_code=404, detail=f"PDB file {protein_id} not found in the database")
 
     return PlainTextResponse(content=pdb_content.decode('utf-8'))
+
+@router.get("/gene_suggestions/{term}")
+async def get_gene_suggestions(
+    term: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    token = credentials.credentials
+    supabase.auth.session = {"access_token": token}
+
+    try:
+        # Query Supabase for gene names that match the search term
+        result = supabase.table('proteins') \
+            .select('gene_name') \
+            .ilike('gene_name', f'%{term}%') \
+            .limit(10) \
+            .execute()
+
+        # Extract unique gene names from the results
+        suggestions = list(set(item['gene_name'] for item in result.data if item['gene_name']))
+        
+        return JSONResponse(content=suggestions)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching gene suggestions: {str(e)}"
+        )

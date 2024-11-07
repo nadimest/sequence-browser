@@ -76,6 +76,29 @@
         .sign-out-button:hover {
             color: #000;
         }
+
+        #suggestions {
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        }
+
+        .suggestion-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            }
+
+        .suggestion-item:hover:not(.text-gray-500) {
+            background-color: #f3f4f6;
+        }
+
+        .text-gray-500 {
+            color: #6b7280;
+        }
+
+        .italic {
+            font-style: italic;
+        }
     </style>
 </head>
 <body class="p-4">
@@ -85,10 +108,13 @@
     </div>
 
     <div class="text-center mb-4 search-bar">
-        <input type="text" 
-               id="geneName" 
-               placeholder="Enter Gene Name"
-               class="border rounded px-2 py-1 mr-2">
+        <div class="relative"> <!-- Add this wrapper div -->
+            <input type="text" 
+                   id="geneName" 
+                   placeholder="Enter Sequence Name"
+                   class="border rounded px-2 py-1 mr-2">
+            <div id="suggestions" class="absolute w-full bg-white border rounded-b shadow-lg hidden"></div>
+        </div>
         
         <button id="searchButton" 
                 class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
@@ -119,6 +145,9 @@
         const searchBar = document.querySelector('.search-bar');
         const content = document.querySelector('.content');
         let viewer = null;
+
+        const suggestionsContainer = document.getElementById('suggestions');
+        let debounceTimeout;
 
         document.getElementById('signOutButton').addEventListener('click', function() {
             localStorage.removeItem('token');
@@ -231,6 +260,89 @@
                 alert('Error loading protein structure. Please check the structure ID.');
             }
         }
+
+        function displayMessage(message, isSelectable = false) {
+            suggestionsContainer.innerHTML = '';
+            const div = document.createElement('div');
+            div.className = 'suggestion-item text-gray-500 italic'; // Styled differently for messages
+            if (!isSelectable) {
+                div.style.cursor = 'default'; // Remove pointer cursor
+                div.style.backgroundColor = '#f9f9f9'; // Light gray background
+            }
+            div.textContent = message;
+            suggestionsContainer.appendChild(div);
+            suggestionsContainer.classList.remove('hidden');
+        }
+
+        geneInput.addEventListener('input', function(e) {
+            clearTimeout(debounceTimeout);
+            
+            const searchTerm = e.target.value.trim();
+            
+            // Always show suggestions container if there's any input
+            if (searchTerm.length > 0) {
+                if (searchTerm.length < 3) {
+                    displayMessage("Type 3 characters for suggestions");
+                    return;
+                }
+
+                // Debounce the API calls to prevent too many requests
+                debounceTimeout = setTimeout(async () => {
+                    const token = localStorage.getItem('token');
+                    try {
+                        const response = await fetch(`/api/gene_suggestions/${searchTerm}`, {
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+
+                        const suggestions = await response.json();
+                        
+                        if (suggestions.length > 0) {
+                            displaySuggestions(suggestions);
+                        } else {
+                            displayMessage("No match found");
+                        }
+                    } catch (error) {
+                        console.error('Error fetching suggestions:', error);
+                        suggestionsContainer.classList.add('hidden');
+                    }
+                }, 300);
+            } else {
+                suggestionsContainer.classList.add('hidden');
+            }
+        });
+
+        function displaySuggestions(suggestions) {
+            suggestionsContainer.innerHTML = '';
+            
+            suggestions.forEach(suggestion => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = suggestion;
+                
+                div.addEventListener('click', () => {
+                    geneInput.value = suggestion;
+                    suggestionsContainer.classList.add('hidden');
+                    searchButton.click(); // Automatically trigger search
+                });
+                
+                suggestionsContainer.appendChild(div);
+            });
+            
+            suggestionsContainer.classList.remove('hidden');
+        }
+
+        // Close suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!suggestionsContainer.contains(e.target) && e.target !== geneInput) {
+                suggestionsContainer.classList.add('hidden');
+            }
+        });
     </script>
 </body>
 </html>
