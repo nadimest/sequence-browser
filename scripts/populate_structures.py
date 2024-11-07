@@ -1,5 +1,6 @@
 import apache_beam as beam
-from apache_beam.options.pipeline_options import PipelineOptions
+from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions
+import apache_beam.transforms.util as beam_util
 import requests
 from supabase import create_client, Client
 import logging
@@ -41,11 +42,16 @@ def get_all_gene_names():
     return all_gene_names
 
 class GetUniprotID(beam.DoFn):
+    def setup(self):
+        # Initialize any dependencies needed by this DoFn
+        import requests
+        self.requests = requests
+        
     def process(self, gene_name):
         logging.info(f"Processing gene: {gene_name}")
         url = f"https://rest.uniprot.org/uniprotkb/search?query=gene:{gene_name}+AND+organism_id:9606&format=json"
         try:
-            response = requests.get(url)
+            response = self.requests.get(url)
             logging.info(f"UniProt API response status for {gene_name}: {response.status_code}")
             if response.status_code == 200:
                 data = response.json()
@@ -62,12 +68,16 @@ class GetUniprotID(beam.DoFn):
         return []
 
 class GetAlphaFoldStructure(beam.DoFn):
+    def setup(self):
+        import requests
+        self.requests = requests
+        
     def process(self, element):
         gene_name, uniprot_id = element
         logging.info(f"Fetching AlphaFold structure for {gene_name} ({uniprot_id})")
         url = f"https://alphafold.ebi.ac.uk/files/AF-{uniprot_id}-F1-model_v4.pdb"
         try:
-            response = requests.get(url)
+            response = self.requests.get(url)
             logging.info(f"AlphaFold API response status for {gene_name}: {response.status_code}")
             if response.status_code == 200:
                 structure_id = f"AF-{uniprot_id}-F1"
@@ -80,6 +90,10 @@ class GetAlphaFoldStructure(beam.DoFn):
         return []
 
 class SaveToSupabase(beam.DoFn):
+    def setup(self):
+        from supabase import create_client
+        self.supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+        
     def process(self, element):
         gene_name, structure_id, pdb_content = element
         logging.info(f"Saving {gene_name} structure to Supabase")
@@ -88,7 +102,7 @@ class SaveToSupabase(beam.DoFn):
         try:
             # Save to Supabase bucket
             logging.info(f"Uploading {file_name} to Supabase bucket")
-            supabase.storage.from_("pdb_files").upload(
+            self.supabase.storage.from_("pdb_files").upload(
                 path=file_name,
                 file=pdb_content,
                 file_options={"content-type": "text/plain"}
@@ -96,7 +110,7 @@ class SaveToSupabase(beam.DoFn):
             
             # Update database
             logging.info(f"Updating database record for {gene_name}")
-            supabase.table("proteins").update(
+            self.supabase.table("proteins").update(
                 {"structure_id": structure_id}
             ).eq("gene_name", gene_name).execute()
             
@@ -105,33 +119,43 @@ class SaveToSupabase(beam.DoFn):
         except Exception as e:
             logging.error(f"Error processing {gene_name}: {str(e)}")
             return [(gene_name, None, f"error: {str(e)}")]
-
+        
 def run_pipeline():
-    # Pipeline options
-    options = PipelineOptions()
+    options = PipelineOptions([
+        '--runner=DirectRunner',
+        '--direct_running_mode=multi_processing',
+        '--direct_num_workers=8',
+        '--direct_running_mode=multi_threading',  # Change to multi-threading
+        '--experiments=disable_fusion'  # Disable fusion optimization
+    ])
+    options.view_as(StandardOptions).streaming = False
 
-    logging.info("Starting pipeline")
-    
     try:
-        # Get all gene names with pagination
         gene_names = get_all_gene_names()
         logging.info(f"Retrieved {len(gene_names)} genes to process")
         
         with beam.Pipeline(options=options) as p:
-            # Create initial PCollection from gene names
-            genes = p | "Create gene names" >> beam.Create(gene_names)
+            # Create initial PCollection with smaller batches
+            genes = (p 
+                    | "Create gene names" >> beam.Create(gene_names)
+                    | "Batch genes" >> beam_util.BatchElements(
+                        min_batch_size=1,  # Process one at a time
+                        max_batch_size=1
+                    )
+                    | "Unbatch genes" >> beam.FlatMap(lambda batch: batch)
+            )
 
             # Get UniProt IDs
             uniprot_ids = genes | "Get UniProt IDs" >> beam.ParDo(GetUniprotID())
 
-            # Get AlphaFold structures
+            # Get AlphaFold structures immediately after each UniProt ID
             structures = uniprot_ids | "Get AlphaFold structures" >> beam.ParDo(GetAlphaFoldStructure())
 
-            # Save to Supabase
+            # Save to Supabase immediately after getting structure
             results = structures | "Save to Supabase" >> beam.ParDo(SaveToSupabase())
 
-            # Log results
-            results | "Log Results" >> beam.Map(lambda x: logging.info(f"Pipeline result: {x}"))
+            # Log results immediately
+            results | "Log Results" >> beam.Map(lambda x: logging.info(f"Complete pipeline result for gene: {x}"))
 
     except Exception as e:
         logging.error(f"Pipeline error: {str(e)}")
