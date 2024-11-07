@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="/static/css/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://molstar.org/viewer/molstar.css" />
+    <title>Protein Viewer</title>
+</head>
+<body>
+    <div id="viewer"></div>
+    <script type="text/javascript" src="/static/js/molstar.js"></script>
+    <script type="text/javascript">
+        async function loadPdbData() {
+            const token = localStorage.getItem('token');
+            fetch('/data/pdb_examples', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.text())
+            .then(data => {
+                molstar.Viewer.create('viewer', {
+                    layoutIsExpanded: false,
+                    layoutShowControls: false,
+                    layoutShowRemoteState: false,
+                    layoutShowSequence: true,
+                    layoutShowLog: false,
+                    layoutShowLeftPanel: false,
+                    viewportShowExpand: false,
+                    viewportShowSelectionMode: false,
+                    viewportShowAnimation: false,
+                }).then(function(viewer) {
+                    viewer.loadStructureFromData(data, 'pdb');
+                });
+            });
+        }
+
+        loadPdbData();
+    </script>
+</body>
+</html>
