@@ -1,7 +1,7 @@
 import os
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 
-# load_dotenv()
+load_dotenv()
 
 DB_CONFIG = {
     'dbname': os.getenv('DB_NAME', 'your_db_name'),

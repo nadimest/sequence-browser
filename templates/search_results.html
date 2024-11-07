@@ -1,0 +1,7 @@
+<ul>
+    {% for protein in proteins %}
+        <li>
+            <a href="/protein/{{ protein.id }}">{{ protein.gene_name }}</a>
+        </li>
+    {% endfor %}
+</ul>
