@@ -37,68 +37,113 @@
             width: 100% !important;
             height: 100% !important;
         }
+        .result-card {
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            max-width: 600px;
+            word-wrap: break-word;
+            text-align: left;
+        }
     </style>
 </head>
 <body class="p-4">
     <div class="text-center mb-4">
-        <!-- Add input field for PDB ID -->
         <input type="text" 
-               id="pdbId" 
-               placeholder="Enter PDB ID (e.g., 2krh)"
-               class="border rounded px-2 py-1 mr-2"
-               value="2krh">
+               id="geneName" 
+               placeholder="Enter Gene Name"
+               class="border rounded px-2 py-1 mr-2">
         
-        <button id="toggleViewer" 
+        <button id="searchButton" 
                 class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-            Show Protein Viewer
+            Search
+        </button>
+        <button id="clearButton" 
+                class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+                style="display: none;">
+            Clear
         </button>
     </div>
 
+    <div id="resultContainer" class="result-card" style="display: none;"></div>
     <div id="viewerContainer" class="viewer-container">
         <div id="viewer"></div>
     </div>
 
     <script type="text/javascript" src="/static/js/molstar.js"></script>
     <script type="text/javascript">
-        const toggleButton = document.getElementById('toggleViewer');
+        const searchButton = document.getElementById('searchButton');
+        const clearButton = document.getElementById('clearButton');
+        const resultContainer = document.getElementById('resultContainer');
         const viewerContainer = document.getElementById('viewerContainer');
-        const pdbInput = document.getElementById('pdbId');
+        const geneInput = document.getElementById('geneName');
         let viewer = null;
 
-        toggleButton.addEventListener('click', async function() {
-            const isHidden = viewerContainer.style.display === 'none' || !viewerContainer.style.display;
-            
-            if (isHidden) {
-                // If showing, destroy existing viewer and create new one
-                if (viewer) {
-                    viewer.dispose();
-                    viewer = null;
-                }
-                viewerContainer.style.display = 'block';
-                toggleButton.textContent = 'Hide Protein Viewer';
-                await loadPdbData(pdbInput.value);
-            } else {
-                // If hiding, just hide the container
-                viewerContainer.style.display = 'none';
-                toggleButton.textContent = 'Show Protein Viewer';
-            }
-        });
+        searchButton.addEventListener('click', async function() {
+            const geneName = geneInput.value.trim();
+            if (!geneName) return;
 
-        async function loadPdbData(pdbId) {
             const token = localStorage.getItem('token');
             try {
-                const response = await fetch(`/data/pdb/${pdbId}`, {
+                const response = await fetch(`/proteins/${geneName}`, {  // Updated endpoint path
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
                 });
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                const data = await response.text();
+                const data = await response.json();
                 
+                // Since we're getting a single object, not an array
+                if (!data) {
+                    resultContainer.textContent = 'Not found';
+                } else {
+                    resultContainer.innerHTML = Object.entries(data)
+                        .map(([key, value]) => `<strong>${key}:</strong><br>${value || ''}<br><br>`)
+                        .join('');
+                    
+                    if (data.structure_id) {
+                        await loadPdbData(data.structure_id);
+                    }
+                }
+                resultContainer.style.display = 'block';
+                clearButton.style.display = 'inline-block';
+            } catch (error) {
+                console.error('Error fetching protein data:', error);
+                alert('Error fetching protein data. Please try again.');
+            }
+        });
+
+        clearButton.addEventListener('click', function() {
+            resultContainer.style.display = 'none';
+            viewerContainer.style.display = 'none';
+            clearButton.style.display = 'none';
+            geneInput.value = '';
+            if (viewer) {
+                viewer.dispose();
+                viewer = null;
+            }
+        });
+
+        async function loadPdbData(structureId) {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`/data/pdb/${structureId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.text();
+
                 viewer = await molstar.Viewer.create('viewer', {
                     layoutIsExpanded: false,
                     layoutShowControls: false,
@@ -133,9 +178,10 @@
                     }
                 });
 
+                viewerContainer.style.display = 'block';
             } catch (error) {
                 console.error('Error loading PDB data:', error);
-                alert('Error loading protein structure. Please check the PDB ID.');
+                alert('Error loading protein structure. Please check the structure ID.');
             }
         }
     </script>

@@ -60,19 +60,6 @@ async def main_app():
     with open("templates/main_app.html") as f:
         return HTMLResponse(content=f.read())
 
-# @app.get("/data/pdb_examples", response_class=PlainTextResponse)
-# async def load_pdb(credentials: HTTPAuthorizationCredentials = Depends(security)):
-#     token = credentials.credentials
-#     supabase.auth.session = {"access_token": token}
-
-#     # Fetch the PDB file from Supabase storage
-#     try:
-#         pdb_content = supabase.storage.from_('pdb_files').download('2krh.pdb')  ## Hardcoded example
-#     except Exception as e:
-#         raise HTTPException(status_code=404, detail="PDB file not found")
-
-#     return PlainTextResponse(content=pdb_content.decode('utf-8'))
-
 @app.get("/data/pdb/{pdb_id}", response_class=PlainTextResponse)
 async def load_pdb(pdb_id: str, credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
@@ -85,3 +72,37 @@ async def load_pdb(pdb_id: str, credentials: HTTPAuthorizationCredentials = Depe
         raise HTTPException(status_code=404, detail=f"PDB file {pdb_id} not found in the database")
 
     return PlainTextResponse(content=pdb_content.decode('utf-8'))
+
+@app.get("/proteins/{gene_name}")
+async def search_protein_by_gene(
+    gene_name: str, 
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    token = credentials.credentials
+    supabase.auth.session = {"access_token": token}
+
+    try:
+        result = supabase.table('proteins') \
+            .select("*") \
+            .ilike('gene_name', gene_name) \
+            .execute()
+
+        if not result.data:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"No protein found with gene name {gene_name}"
+            )
+
+        # Clean the data by replacing null values with empty strings
+        cleaned_data = result.data[0]
+        for key in cleaned_data:
+            if cleaned_data[key] is None:
+                cleaned_data[key] = ""
+
+        return JSONResponse(content=cleaned_data)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error searching for protein: {str(e)}"
+        )
