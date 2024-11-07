@@ -3,9 +3,8 @@
 ## User Interface Enhancements
 1. Implement advanced gene search functionality
    - Current implementation requires exact gene name
-   - Consider adding autocomplete and fuzzy search capabilities
-   - Add support for alternative gene identifiers
-
+   - ~~Consider adding autocomplete and fuzzy search capabilities ~~
+   
 2. Enhance reference list presentation
    - Restructure references as properly formatted numbered citations
    - Improve parsing of raw database text
