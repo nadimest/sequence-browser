@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="/static/css/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="https://molstar.org/viewer/molstar.css" />
-    <title>Sequence Viewer</title>
+    <title>Protein Viewer</title>
     <style>
         .viewer-container {
             width: 800px;
@@ -56,9 +56,34 @@
         .content {
             display: none;
         }
+        .header {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 1rem;
+        }
+
+        .sign-out-button {
+            color: #666;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+            transition: color 0.2s ease;
+        }
+
+        .sign-out-button:hover {
+            color: #000;
+        }
     </style>
 </head>
 <body class="p-4">
+
+    <div class="header">
+        <button id="signOutButton" class="sign-out-button">Sign Out</button>
+    </div>
+
     <div class="text-center mb-4 search-bar">
         <input type="text" 
                id="geneName" 
@@ -95,13 +120,18 @@
         const content = document.querySelector('.content');
         let viewer = null;
 
+        document.getElementById('signOutButton').addEventListener('click', function() {
+            localStorage.removeItem('token');
+            window.location.href = '/';
+        });
+        
         searchButton.addEventListener('click', async function() {
             const geneName = geneInput.value.trim();
             if (!geneName) return;
 
             const token = localStorage.getItem('token');
             try {
-                const response = await fetch(`/proteins/${geneName}`, {  // Updated endpoint path
+                const response = await fetch(`/api/proteins/${geneName}`, {  // Updated endpoint path
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -149,7 +179,7 @@
         async function loadPdbData(structureId) {
             const token = localStorage.getItem('token');
             try {
-                const response = await fetch(`/data/pdb/${structureId}`, {
+                const response = await fetch(`/api/protein_structures/${structureId}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }

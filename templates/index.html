@@ -1,126 +1,136 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="/static/css/tailwind.min.css" rel="stylesheet">
-    <title>Protein Viewer</title>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f4f8;
-        }
-        #login-form {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        #login-form input {
-            display: block;
-            width: 100%;
-            padding: 0.5rem;
-            margin-bottom: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        #login-form button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        #login-form button:hover {
-            background-color: #45a049;
-        }
-    </style>
-</head>
-<body>
-    <div id="content"></div>
-    <script type="text/javascript">
-        async function checkAuth() {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                loadLoginForm();
-                return;
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="/static/css/tailwind.min.css" rel="stylesheet">
+        <title>Protein Viewer</title>
+        <style>
+            body {
+                background-color: #f0f4f8;
             }
-
-            const response = await fetch('/auth/verify', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
+            #login-form {
+                background: white;
+                padding: 2rem;
+                border-radius: 8px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                text-align: center;
+                width: 100%;
+                max-width: 400px;
+                margin: 20vh auto;  /* This creates vertical centering */
+            }
+            #login-form input {
+                display: block;
+                width: 100%;
+                padding: 0.5rem;
+                margin-bottom: 1rem;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+            #login-form button {
+                background-color: #4CAF50;
+                color: white;
+                padding: 0.5rem 1rem;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                width: 100%;
+            }
+            #login-form button:hover {
+                background-color: #45a049;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="content"></div>
+        <script type="text/javascript">
+            function loadLoginForm() {
+                document.getElementById('content').innerHTML = `
+                    <div id="login-form">
+                        <h2>Login</h2>
+                        <input type="email" id="email" placeholder="Email">
+                        <input type="password" id="password" placeholder="Password">
+                        <button onclick="signIn()">Login</button>
+                    </div>
+                `;
+            }
+            async function checkAuth() {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    loadLoginForm();
+                    return;
                 }
-            });
 
-            if (response.ok) {
-                loadMainApp();
-            } else {
-                loadLoginForm();
-            }
-        }
-
-        function loadLoginForm() {
-            document.getElementById('content').innerHTML = `
-                <div id="login-form">
-                    <h2>Login</h2>
-                    <input type="email" id="email" placeholder="Email">
-                    <input type="password" id="password" placeholder="Password">
-                    <button onclick="signIn()">Login</button>
-                </div>
-            `;
-        }
-
-        async function signIn() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
-            const response = await fetch('/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ email, password })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                localStorage.setItem('token', data.token);
-                loadMainApp();
-            } else {
-                console.error('Error signing in');
-            }
-        }
-
-        function loadMainApp() {
-            fetch('/main_app')
-                .then(response => response.text())
-                .then(html => {
-                    document.getElementById('content').innerHTML = html;
-                    executeScripts(document.getElementById('content'));
+                const response = await fetch('/auth/verify', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
                 });
-        }
 
-        function executeScripts(element) {
-            const scripts = element.getElementsByTagName('script');
-            for (let i = 0; i < scripts.length; i++) {
-                const script = document.createElement('script');
-                script.type = 'text/javascript';
-                if (scripts[i].src) {
-                    script.src = scripts[i].src;
+                if (response.ok) {
+                    loadMainApp();
                 } else {
-                    script.text = scripts[i].innerHTML;
+                    loadLoginForm();
                 }
-                document.head.appendChild(script);
-                document.head.removeChild(script);
             }
-        }
 
-        checkAuth();
-    </script>
-</body>
+            function loadLoginForm() {
+                document.getElementById('content').innerHTML = `
+                    <div id="login-form">
+                        <h2>Login</h2>
+                        <input type="email" id="email" placeholder="Email">
+                        <input type="password" id="password" placeholder="Password">
+                        <button onclick="signIn()">Login</button>
+                    </div>
+                `;
+            }
+
+            async function signIn() {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('token', data.token);
+                    loadMainApp();
+                } else {
+                    console.error('Error signing in');
+                }
+            }
+
+            function loadMainApp() {
+                fetch('/main_app')
+                    .then(response => response.text())
+                    .then(html => {
+                        document.getElementById('content').innerHTML = html;
+                        executeScripts(document.getElementById('content'));
+                    });
+            }
+
+            function executeScripts(element) {
+                const scripts = element.getElementsByTagName('script');
+                for (let i = 0; i < scripts.length; i++) {
+                    const script = document.createElement('script');
+                    script.type = 'text/javascript';
+                    if (scripts[i].src) {
+                        script.src = scripts[i].src;
+                    } else {
+                        script.text = scripts[i].innerHTML;
+                    }
+                    document.head.appendChild(script);
+                    document.head.removeChild(script);
+                }
+            }
+
+            checkAuth();
+     </script>
+    </body>
 </html>
