@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 import os
 from src.routers import proteins, auth  # Import the routers
@@ -14,6 +15,15 @@ supabase: Client = create_client(supabase_url, supabase_key)
 
 # Static files setup
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# CORS middleware setup
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
