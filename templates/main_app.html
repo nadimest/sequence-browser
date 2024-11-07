@@ -42,14 +42,24 @@
             padding: 20px;
             border: 1px solid #ccc;
             border-radius: 8px;
-            max-width: 600px;
+            max-width: 1200px; /* Updated from 600px to 1200px */
             word-wrap: break-word;
             text-align: left;
+        }
+        .search-bar {
+            padding-top: 20px; /* Add padding to the top */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Full viewport height */
+        }
+        .content {
+            display: none;
         }
     </style>
 </head>
 <body class="p-4">
-    <div class="text-center mb-4">
+    <div class="text-center mb-4 search-bar">
         <input type="text" 
                id="geneName" 
                placeholder="Enter Gene Name"
@@ -66,11 +76,14 @@
         </button>
     </div>
 
-    <div id="resultContainer" class="result-card" style="display: none;"></div>
-    <div id="viewerContainer" class="viewer-container">
-        <div id="viewer"></div>
-    </div>
+    <div class="content">
+        <div id="viewerContainer" class="viewer-container">
+            <div id="viewer"></div>
+        </div>
 
+        <div id="resultContainer" class="result-card" style="display: none;"></div>
+    </div>
+    
     <script type="text/javascript" src="/static/js/molstar.js"></script>
     <script type="text/javascript">
         const searchButton = document.getElementById('searchButton');
@@ -78,6 +91,8 @@
         const resultContainer = document.getElementById('resultContainer');
         const viewerContainer = document.getElementById('viewerContainer');
         const geneInput = document.getElementById('geneName');
+        const searchBar = document.querySelector('.search-bar');
+        const content = document.querySelector('.content');
         let viewer = null;
 
         searchButton.addEventListener('click', async function() {
@@ -112,6 +127,8 @@
                 }
                 resultContainer.style.display = 'block';
                 clearButton.style.display = 'inline-block';
+                searchBar.style.height = 'auto'; // Reset height
+                content.style.display = 'block'; // Show content
             } catch (error) {
                 console.error('Error fetching protein data:', error);
                 alert('Error fetching protein data. Please try again.');
